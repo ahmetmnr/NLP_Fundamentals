@@ -1,30 +1,29 @@
-
 # Regular Expressions, Tokenization, and Edit Distance
 
 ## Overview
-This section covers fundamental Natural Language Processing (NLP) techniques including **Regular Expressions**, **Tokenization**, and **Edit Distance**. Each of these topics is crucial for text processing tasks in NLP, and here we provide Python implementations with explanations.
+This section contains Python scripts for three fundamental techniques in Natural Language Processing (NLP): **Regular Expressions**, **Tokenization**, and **Edit Distance**. Each of these techniques is crucial for text processing tasks. The provided scripts demonstrate how to use them effectively in Python.
 
-Bu bölüm, Doğal Dil İşleme (NLP) tekniklerinden **Düzenli İfadeler (Regex)**, **Tokenizasyon** ve **Edit Mesafesi** gibi temel kavramları kapsar. Her biri, metin işleme görevleri için çok önemlidir ve burada Python uygulamaları ve açıklamalar yer almaktadır.
+Bu bölüm, Doğal Dil İşleme (NLP) alanında kullanılan üç temel tekniğin Python betiklerini içerir: **Düzenli İfadeler (Regex)**, **Tokenizasyon** ve **Edit Mesafesi**. Her biri, metin işleme görevleri için kritik öneme sahiptir. Sağlanan betikler, bu tekniklerin Python'da nasıl kullanıldığını göstermektedir.
 
 ## File Structure
+1. **`regex_example.py`**: Demonstrates various regular expression techniques.
+2. **`tokenization_example.py`**: Shows how to tokenize text into words and sentences.
+3. **`edit_distance_example.py`**: Calculates the edit distance between two words or sentences.
 
-- **regex_example.py**
-- **tokenization_example.py**
-- **edit_distance_example.py**
+---
 
-### regex_example.py
+### `regex_example.py`
 
-In this script, we demonstrate the usage of **Regular Expressions** (regex), a powerful tool for pattern matching in text. Regular expressions allow you to search for specific patterns, extract information, and manipulate strings efficiently.
+This script covers the basics and advanced usage of **regular expressions** in Python using the `re` library. Regular expressions are useful for pattern matching, searching, and string manipulation tasks.
 
-Bu betikte, metinlerde desen eşleştirme için güçlü bir araç olan **Düzenli İfadeler**in (regex) kullanımını gösteriyoruz. Düzenli ifadeler, belirli kalıpları aramanıza, bilgileri çıkarmanıza ve dizeleri verimli bir şekilde değiştirmenize olanak tanır.
+Bu betik, Python'da `re` kütüphanesini kullanarak **düzenli ifadelerin** (regex) temel ve ileri kullanımını ele alır. Düzenli ifadeler, desen eşleştirme, arama ve dizeleri işleme görevlerinde kullanışlıdır.
 
-#### Topics Covered:
-1. **Basic Pattern Matching:** Simple matching of a word in a text.
-2. **Character Sets:** Matching specific character groups, such as vowels.
-3. **Quantifiers:** Using operators like `*`, `+`, and `?` for flexible pattern matching.
-4. **Anchors:** Matching patterns at the start or end of a line using `^` and `$`.
-5. **Substitution:** Replacing matching patterns in a text with a different string.
-6. **Advanced Features:** Lookahead/lookbehind assertions, greedy/non-greedy matching, and grouping.
+#### Key Examples:
+1. **Basic Pattern Matching:** Searching for simple patterns like specific words.
+2. **Character Sets:** Finding characters from a defined set, like vowels.
+3. **Quantifiers:** Using `+`, `*`, and `?` to handle repetition and optional characters.
+4. **Anchors:** Using `^` and `$` to match patterns at the start or end of a line.
+5. **Lookahead and Lookbehind:** Performing advanced assertions to check patterns before or after another string.
 
 #### Example Usage:
 
@@ -34,70 +33,20 @@ pattern = r'\d+'
 text = "I have 100 apples and 200 oranges."
 numbers = re.findall(pattern, text)
 print(numbers)  # Output: ['100', '200']
-```
 
-### tokenization_example.py
+tokenization_example.py
+This script focuses on tokenization, the process of splitting text into smaller units such as words or sentences. Tokenization is the first step in most NLP tasks, including text analysis and machine learning.
 
-This script covers **Tokenization**, which is the process of breaking down text into smaller units such as words or sentences. Tokenization is a fundamental step in NLP for processing and analyzing text.
+Bu betik, metinleri kelimelere veya cümlelere ayırma işlemi olan tokenizasyon üzerine odaklanır. Tokenizasyon, çoğu NLP görevinde ilk adımdır ve metin analizi ile makine öğrenmesi için gereklidir.
 
-Bu betik, metinleri kelimelere veya cümlelere bölme işlemi olan **Tokenizasyon**u ele alır. Tokenizasyon, NLP'de metinleri işlemek ve analiz etmek için temel bir adımdır.
-
-#### Topics Covered:
-1. **Word Tokenization:** Breaking text into individual words.
-2. **Sentence Tokenization:** Breaking text into sentences.
-3. **Regex-based Tokenization:** Tokenizing based on custom patterns using regular expressions.
-4. **Tweet Tokenization:** Handling informal text, such as tweets.
-5. **Subword Tokenization:** Breaking words into subword units for use in advanced models like BERT.
-
-#### Example Usage:
-
-```python
+Key Examples:
+Word Tokenization: Splitting a sentence into individual words.
+Sentence Tokenization: Dividing text into sentences.
+Regex-Based Tokenization: Using regular expressions to tokenize based on custom patterns.
+Tweet Tokenization: Tokenizing informal text, such as tweets.
+Subword Tokenization: Breaking words into subword units, useful for language models.
+Example Usage:
 from nltk.tokenize import word_tokenize
-text = "Natural Language Processing is amazing!"
+text = "Natural Language Processing is fascinating!"
 tokens = word_tokenize(text)
-print(tokens)  # Output: ['Natural', 'Language', 'Processing', 'is', 'amazing', '!']
-```
-
-### edit_distance_example.py
-
-In this script, we explore **Edit Distance** (Levenshtein Distance), which measures the number of operations (insertions, deletions, substitutions) required to transform one string into another. This is useful in spell checking, string matching, and sequence alignment tasks.
-
-Bu betikte, bir dizeyi başka bir dizeye dönüştürmek için gereken işlem sayısını ölçen **Edit Mesafesi**ni (Levenshtein Mesafesi) inceliyoruz. Bu teknik yazım denetimi, dize eşleştirme ve dizilim hizalaması gibi görevlerde kullanışlıdır.
-
-#### Topics Covered:
-1. **Basic Edit Distance:** Calculating the minimum number of operations to convert one word into another.
-2. **Custom Edit Distance:** Defining custom costs for insertions, deletions, and substitutions.
-3. **Optimal String Alignment:** Considering transpositions when calculating edit distance.
-
-#### Example Usage:
-
-```python
-from nltk.metrics import edit_distance
-word1 = "kitten"
-word2 = "sitting"
-distance = edit_distance(word1, word2)
-print(f"Edit distance: {distance}")  # Output: 3
-```
-
-## Requirements
-
-This section uses the following libraries:
-
-- **nltk:** Natural Language Toolkit for text processing tasks. You can install it using:
-
-```bash
-pip install nltk
-```
-
-Additionally, make sure to download the necessary NLTK data:
-
-```python
-import nltk
-nltk.download('punkt')
-```
-
-## Conclusion
-
-This directory provides Python implementations for Regular Expressions, Tokenization, and Edit Distance. These techniques are widely used in Natural Language Processing for text manipulation, analysis, and comparison. Each script is well-commented and can be adapted for various NLP projects.
-
-Bu dizin, Düzenli İfadeler, Tokenizasyon ve Edit Mesafesi için Python uygulamaları sunar. Bu teknikler, metin işleme, analiz ve karşılaştırma için Doğal Dil İşleme'de yaygın olarak kullanılır. Her betik iyi yorumlanmıştır ve çeşitli NLP projeleri için uyarlanabilir.
+print(tokens)  # Output: ['Natural', 'Language', 'Processing', 'is', 'fascinating', '!']
