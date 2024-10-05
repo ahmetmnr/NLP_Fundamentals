@@ -1,0 +1,52 @@
+import os
+from transformers import AutoTokenizer, AutoModel
+import torch
+import faiss
+import numpy as np
+
+# Geçici çözüm: OpenMP çakışmalarını önlemek için ortam değişkeni ayarlama
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# Loading Hugging Face Model (Hugging Face Model Yükleme)
+model_name = "sentence-transformers/all-MiniLM-L6-v2"  # This model is a fast and lightweight BERT-based model (Bu model hızlı ve hafif bir BERT tabanlı modeldir)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModel.from_pretrained(model_name)
+
+# Preparing documents (Belgelerimizi hazırlıyoruz)
+documents = [
+    "The Eiffel Tower is located in Paris, France.",
+    "The Great Wall of China is one of the Seven Wonders of the World.",
+    "Python is a popular programming language for data science.",
+    "The Amazon rainforest is known as the lungs of the Earth."
+]
+
+# Function to embed documents (Belgeleri yoğun vektörlere dönüştürme fonksiyonu)
+def embed_documents(documents):
+    inputs = tokenizer(documents, padding=True, truncation=True, return_tensors="pt")
+    with torch.no_grad():
+        outputs = model(**inputs)
+    # Using the mean of token embeddings to create vectors (Token vektörlerinin ortalamasını kullanarak vektör oluşturuyoruz)
+    embeddings = outputs.last_hidden_state.mean(dim=1)
+    return embeddings
+
+# Embedding the documents (Belgeleri vektörleştiriyoruz)
+document_embeddings = embed_documents(documents)
+
+# Indexing vectors using Faiss (Faiss Kullanarak Vektörleri İndeksleme)
+embedding_dim = document_embeddings.shape[1]
+index = faiss.IndexFlatL2(embedding_dim)
+
+document_embeddings_np = document_embeddings.numpy()
+index.add(document_embeddings_np)
+
+# Finding the query and similar documents (Sorgu ve benzer belgeleri bulma)
+query = "Where is the Eiffel Tower located?"
+query_embedding = embed_documents([query]).numpy()
+
+# Finding the nearest document using Faiss (k=2 nearest documents) (Faiss kullanarak en yakın belgeyi bulma (k=2 en yakın belge))
+k = 2
+distances, indices = index.search(query_embedding, k)
+
+# Printing the most similar documents (En benzer belgeleri yazdıralım)
+for idx in indices[0]:
+    print(f"Similar Document: {documents[idx]}")

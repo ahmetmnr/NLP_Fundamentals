@@ -1,115 +1,101 @@
 import numpy as np
-def softmax(x):
+
+def softmax(x, axis=None):
     """
-    Compute softmax values for each set of scores in x.
-    Her bir skor için softmax değerini hesaplar.
+    Compute softmax along the specified axis for stability.
     """
-    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))  # Subtract max for numeric stability
-    return e_x / e_x.sum(axis=-1, keepdims=True)
+    exp_x = np.exp(x - np.max(x, axis=axis, keepdims=True))  # For numerical stability
+    return exp_x / np.sum(exp_x, axis=axis, keepdims=True)
 
+def tensor_dot(q, k):
+    """
+    Compute the scaled dot-product between query and key.
+    This is the core of self-attention, and results in an attention score matrix.
+    """
+    attention_scores = (k @ q) / np.sqrt(q.shape[0])  # Scaled by sqrt of query size
+    attention_weights = softmax(attention_scores)
+    return attention_weights
 
-class Attention:
-    def __init__(self, hidden_size):
-        """
-        Initializes the attention mechanism with randomly initialized weights.
-        """
-        self.hidden_size = hidden_size
-        self.W1 = np.random.randn(hidden_size, hidden_size) * 0.01  # Weight for encoder hidden states
-        self.W2 = np.random.randn(hidden_size, hidden_size) * 0.01  # Weight for decoder hidden states
-        self.V = np.random.randn(hidden_size, 1) * 0.01  # Weight for calculating scores
+def attention_layer(q, k, v):
+    """
+    Computes the attention output using query, key, and value matrices.
+    """
+    attention_weights = tensor_dot(q, k)
+    return attention_weights @ v
 
-    def _calculate_score(self, hidden_encoder, hidden_decoder):
-        """
-        Calculates the alignment score between encoder and decoder hidden states.
-        """
-        score = np.dot(np.tanh(np.dot(hidden_encoder, self.W1) + np.dot(hidden_decoder, self.W2)), self.V)
-        return score
+def batched_tensor_dot(q, k):
+    """
+    Computes batched dot product using Einstein summation notation.
+    Efficiently calculates scaled dot-product attention for batches.
+    """
+    attention_scores = np.einsum("ij,kj->ik", q, k) / np.sqrt(q.shape[0])
+    attention_weights = softmax(attention_scores, axis=1)  # Softmax over sequence length
+    return attention_weights
 
-    def forward(self, encoder_outputs, hidden_decoder):
-        """
-        Forward pass through the attention mechanism.
-        """
-        # Calculate alignment scores between decoder hidden state and each encoder hidden state
-        scores = np.array([self._calculate_score(h_enc, hidden_decoder) for h_enc in encoder_outputs])
+def self_attention(x):
+    """
+    Performs self-attention where query, key, and value are the same input.
+    """
+    attention_weights = batched_tensor_dot(x, x)  # Self-attention: q = k = x
+    return attention_weights @ x
 
-        # Apply softmax to the scores to obtain attention weights
-        attention_weights = np.exp(scores) / np.sum(np.exp(scores), axis=0)
+# Random weight initialization for the trainable self-attention mechanism
+w_q = np.random.normal(size=(4, 4))  # Query weights
+w_k = np.random.normal(size=(4, 4))  # Key weights
+w_v = np.random.normal(size=(4, 2))  # Value weights
 
-        # Compute the context vector as the weighted sum of encoder outputs
-        context_vector = np.sum(attention_weights * encoder_outputs, axis=0)
+def trainable_self_attention(x, w_q, w_k, w_v):
+    """
+    Trainable self-attention with learned query, key, and value weights.
+    """
+    q = x @ w_q  # Compute the query
+    k = x @ w_k  # Compute the key
+    v = x @ w_v  # Compute the value
+    attention_weights = batched_tensor_dot(q, k)
+    return attention_weights @ v  # Return the weighted sum of values
 
-        return context_vector, attention_weights
+# Multi-head attention weights for two heads
+w_q_h1 = np.random.normal(size=(4, 4))
+w_k_h1 = np.random.normal(size=(4, 4))
+w_v_h1 = np.random.normal(size=(4, 2))
+w_q_h2 = np.random.normal(size=(4, 4))
+w_k_h2 = np.random.normal(size=(4, 4))
+w_v_h2 = np.random.normal(size=(4, 2))
+w_h = np.random.normal(size=(2, 1))  # Output projection after concatenating heads
 
-# Example usage within an encoder-decoder model
-class Encoder:
-    def __init__(self, input_size, hidden_size):
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.W_xh = np.random.randn(input_size, hidden_size) * 0.01  # Input to hidden
-        self.W_hh = np.random.randn(hidden_size, hidden_size) * 0.01  # Hidden to hidden
-        self.b_h = np.zeros((1, hidden_size))  # Bias for hidden state
+def multihead_attention(x, w_q_h1, w_k_h1, w_v_h1, w_q_h2, w_k_h2, w_v_h2):
+    """
+    Multi-head attention with two attention heads.
+    Each head computes self-attention independently, and the results are concatenated.
+    """
+    h1_out = trainable_self_attention(x, w_q_h1, w_k_h1, w_v_h1)  # Head 1
+    h2_out = trainable_self_attention(x, w_q_h2, w_k_h2, w_v_h2)  # Head 2
+    # Concatenate the two heads along the last axis
+    all_heads = np.stack((h1_out, h2_out), axis=-1)
+    return np.squeeze(all_heads @ w_h)  # Apply output projection
 
-    def forward(self, x):
-        batch_size, timesteps, _ = x.shape
-        h = np.zeros((batch_size, self.hidden_size))  # Initialize hidden state
-        encoder_outputs = []
+# Example usage with random input queries, keys, and values
+i_query = np.random.normal(size=(4,))
+i_keys = np.random.normal(size=(11, 4))
 
-        for t in range(timesteps):
-            x_t = x[:, t, :]
-            h = np.tanh(np.dot(x_t, self.W_xh) + np.dot(h, self.W_hh) + self.b_h)
-            encoder_outputs.append(h)
+# Test tensor dot for basic attention
+attention_scores = tensor_dot(i_query, i_keys)
+print("Attention Scores (single query):", attention_scores)
 
-        encoder_outputs = np.stack(encoder_outputs, axis=1)  # Shape: (batch_size, timesteps, hidden_size)
-        return encoder_outputs, h  # Return all hidden states and the last hidden state
+# Test attention layer with values
+i_values = np.random.normal(size=(11, 2))
+attention_output = attention_layer(i_query, i_keys, i_values)
+print("Attention Layer Output:", attention_output)
 
-class Decoder:
-    def __init__(self, input_size, hidden_size, output_size):
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.W_hy = np.random.randn(hidden_size + input_size, output_size) * 0.01  # Adjusted Hidden to output weight size
-        self.b_y = np.zeros((1, output_size))  # Bias for output
-        self.attention = Attention(hidden_size)
+# Test batched self-attention
+i_batched_query = np.random.normal(size=(11, 4))
+self_attention_output = self_attention(i_batched_query)
+print("Self-Attention Output (batched):", self_attention_output)
 
-    def forward(self, decoder_input, hidden_encoder, encoder_outputs):
-        """
-        Forward pass through the decoder with attention.
-        """
-        # Reshape decoder_input for compatibility
-        decoder_input = decoder_input.reshape(-1, decoder_input.shape[-1])
+# Test trainable self-attention
+trainable_attention_output = trainable_self_attention(i_batched_query, w_q, w_k, w_v)
+print("Trainable Self-Attention Output:", trainable_attention_output)
 
-        # Calculate the context vector using the attention mechanism
-        context_vector, attention_weights = self.attention.forward(encoder_outputs, hidden_encoder)
-
-        # Combine the context vector with the current input and pass through the decoder
-        context_vector = context_vector.reshape(1, -1)  # Reshape context vector to match input shape
-        decoder_combined_input = np.hstack((decoder_input, context_vector))
-
-        # Now decoder_combined_input has shape (batch_size, hidden_size + input_size)
-        decoder_hidden = np.tanh(np.dot(decoder_combined_input, self.W_hy) + self.b_y)
-        output = softmax(np.dot(decoder_hidden, self.W_hy) + self.b_y)
-
-        return output, decoder_hidden, attention_weights
-
-# Example usage of attention mechanism in encoder-decoder RNN
-if __name__ == "__main__":
-    input_size = 5   # Input size (e.g., embedding size)
-    hidden_size = 10  # Hidden state size
-    output_size = 5  # Output size (e.g., vocabulary size)
-
-    # Define encoder and decoder
-    encoder = Encoder(input_size, hidden_size)
-    decoder = Decoder(input_size, hidden_size, output_size)
-
-    # Example input data (batch_size=1, timesteps=4, input_size=5)
-    encoder_input = np.random.randn(1, 4, input_size)
-    decoder_input = np.random.randn(1, 1, input_size)  # Single timestep for decoder input
-
-    # Forward pass through encoder
-    encoder_outputs, encoder_hidden = encoder.forward(encoder_input)
-
-    # Forward pass through decoder with attention
-    output, decoder_hidden, attention_weights = decoder.forward(decoder_input, encoder_hidden, encoder_outputs)
-
-    # Print results
-    print("Decoder Output:", output)
-    print("Attention Weights:", attention_weights)
+# Test multi-head attention
+multihead_output = multihead_attention(i_batched_query, w_q_h1, w_k_h1, w_v_h1, w_q_h2, w_k_h2, w_v_h2)
+print("Multi-Head Attention Output:", multihead_output)
