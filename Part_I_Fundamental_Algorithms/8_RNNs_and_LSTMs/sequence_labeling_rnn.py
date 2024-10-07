@@ -1,6 +1,8 @@
 import numpy as np
 from rnn import SimpleRNN  # Import the RNN model from rnn.py
+from sklearn.preprocessing import StandardScaler
 
+# Function to one-hot encode labels
 def one_hot_encode(labels, num_classes):
     """
     Converts class indices to one-hot encoded vectors.
@@ -8,6 +10,7 @@ def one_hot_encode(labels, num_classes):
     """
     return np.eye(num_classes)[labels]
 
+# SequenceLabelingRNN class using SimpleRNN
 class SequenceLabelingRNN:
     def __init__(self, input_size, hidden_size, output_size):
         """
@@ -62,7 +65,9 @@ class SequenceLabelingRNN:
         self.W_out -= learning_rate * dW_out
         self.b_out -= learning_rate * db_out
 
-        # Note: Backpropagation through time (BPTT) for the RNN is not implemented here
+        # Backpropagation through time (BPTT) for the RNN part
+        dh_next = grad_output_reshaped.dot(self.W_out.T).reshape(batch_size, timesteps, -1)
+        self.rnn.backward(X, dh_next)
 
     def train(self, X, y, epochs=1000, learning_rate=0.1):
         for epoch in range(epochs):
@@ -106,8 +111,10 @@ if __name__ == "__main__":
     # Reshape X to 3D (batch_size, timesteps, input_size)
     X = X.reshape((X.shape[0], X.shape[1], 1))
 
-    # Normalize inputs
-    X = X / float(len(word_to_index))
+    # Normalize inputs using StandardScaler
+    scaler = StandardScaler()
+    X = X.reshape(-1, 1)  # Flatten for scaler
+    X = scaler.fit_transform(X).reshape(-1, 3, 1)  # Reshape back to original shape
 
     # Define hyperparameters
     input_size = 1
@@ -123,7 +130,7 @@ if __name__ == "__main__":
     # Predict labels for a new sentence
     test_sentence = np.array([[word_to_index["the"], word_to_index["cat"], word_to_index["meows"]]])
     test_sentence = test_sentence.reshape((test_sentence.shape[0], test_sentence.shape[1], 1))
-    test_sentence = test_sentence / float(len(word_to_index))
+    test_sentence = scaler.transform(test_sentence.reshape(-1, 1)).reshape(-1, 3, 1)
     predicted_labels = rnn_model.predict(test_sentence)
 
     # Map predicted labels back to human-readable form

@@ -1,0 +1,155 @@
+from flask import Flask, request, jsonify, render_template_string, redirect, url_for, flash
+import openai
+import pdfplumber
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import logging
+
+import os
+from dotenv import load_dotenv
+
+# .env dosyasını yükle
+load_dotenv()
+
+
+#logging.basicConfig(level=logging.DEBUG)
+
+app = Flask(__name__)
+
+app.secret_key = os.urandom(24)
+
+# API anahtarını al
+openai_api_key = os.getenv("OPENAI_API_KEY")
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+index = []
+documents = []
+
+@app.route('/')
+def home():
+    html_form = """
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <title>RAG Belge Yükleme ve Soru Sorma</title>
+      </head>
+      <body>
+        <h1>RAG Sistemi: Belge Yükleme ve Soru Sorma</h1>
+        
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <ul>
+              {% for message in messages %}
+                <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+        
+        <h3>Belge Yükleyin:</h3>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+          <input type="file" name="document" required>
+          <button type="submit">Yükle</button>
+        </form>
+        
+        <h3>Belge ile İlgili Soru Sorun:</h3>
+        <form action="/ask" method="post">
+          <input type="text" name="question" placeholder="Sorunuzu buraya yazın..." required>
+          <button type="submit">Soru Sor</button>
+        </form>
+      </body>
+    </html>
+    """
+    return render_template_string(html_form)
+
+@app.route('/upload', methods=['POST'])
+def upload_document():
+    if 'document' not in request.files:
+        flash("Belge bulunamadı, lütfen bir belge yükleyin.")
+        return redirect(url_for('home'))
+
+    file = request.files['document']
+    if file.filename == '':
+        flash("Geçerli bir belge yükleyin.")
+        return redirect(url_for('home'))
+
+    try:
+        logging.debug("PDF dosyası okunuyor...")
+        with pdfplumber.open(file) as pdf:
+            text = ""
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+
+        if not text.strip():
+            flash("PDF dosyasından metin çıkarılamadı. Lütfen geçerli bir belge yükleyin.")
+            return redirect(url_for('home'))
+
+        logging.debug("Metin embedding'e dönüştürülüyor...")
+        embeddings = model.encode([text], convert_to_numpy=True)
+        index.append(embeddings)
+        documents.append(text)
+
+        flash("Belge başarıyla yüklendi ve işlendi.")
+        return redirect(url_for('home'))
+    except Exception as e:
+        logging.error(f"Belge işlenirken hata oluştu: {str(e)}")
+        flash(f"Belge işlenirken hata oluştu: {str(e)}")
+        return redirect(url_for('home'))
+
+@app.route('/ask', methods=['POST'])
+def ask_question():
+    question = request.form.get('question')
+    if not question:
+        flash("Lütfen bir soru belirtin.")
+        return redirect(url_for('home'))
+
+    if len(index) == 0:
+        flash("Henüz belge yüklenmedi. Lütfen önce bir belge yükleyin.")
+        return redirect(url_for('home'))
+
+    logging.debug("Sorunun embedding'i oluşturuluyor...")
+    try:
+        question_embedding = model.encode([question], convert_to_numpy=True)
+    except Exception as e:
+        logging.error(f"Embedding oluşturulurken hata oluştu: {str(e)}")
+        flash(f"Embedding oluşturulurken hata oluştu: {str(e)}")
+        return redirect(url_for('home'))
+
+    try:
+        logging.debug("Belgeler içinde en yakın sonucu bulmaya çalışılıyor...")
+        distances = [np.linalg.norm(question_embedding - emb) for emb in index]
+        min_distance_index = int(np.argmin(distances))
+
+        if len(distances) == 0 or min_distance_index >= len(documents):
+            flash("Belge bulunamadı. Lütfen daha fazla belge yükleyin.")
+            return redirect(url_for('home'))
+
+        document = documents[min_distance_index]
+        logging.debug("OpenAI API ile yanıt oluşturuluyor...")
+
+        try:
+            response = openai.Completion.create(
+                engine="gpt-4o-mini",
+                prompt=f"Belge: {document}\n\nSoru: {question}\nYanıt:",
+                max_tokens=150
+            )
+            answer = response.choices[0].text.strip()
+            flash(f"Cevap: {answer}")
+            return redirect(url_for('home'))
+        except openai.error.OpenAIError as api_error:
+            logging.error(f"OpenAI API hatası: {str(api_error)}")
+            flash(f"OpenAI API hatası: {str(api_error)}")
+            return redirect(url_for('home'))
+
+    except Exception as e:
+        logging.error(f"Soru işlenirken hata oluştu: {str(e)}")
+        flash(f"Soru işlenirken hata oluştu: {str(e)}")
+        return redirect(url_for('home'))
+
+if __name__ == '__main__':
+    app.run(debug=True)

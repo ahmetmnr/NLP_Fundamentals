@@ -5,3 +5,4 @@ Part_I_Fundamental_Algorithms/6_Vector_Semantics_and_Embeddings/glove/glove.6B.3
 # FastText dosyalarını hariç tut
 Part_I_Fundamental_Algorithms/6_Vector_Semantics_and_Embeddings/fasttext/cc.en.300.bin
 Part_I_Fundamental_Algorithms/6_Vector_Semantics_and_Embeddings/fasttext/cc.en.300.bin.gz
+.env
